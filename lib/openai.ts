@@ -1,6 +1,59 @@
 import { ParsedCSV, getDataSummary, generateStatsByAuthor, generateWriterRankings, WriterRanking, generateSingleWriterData } from './csvParser';
 import { aiProvider, AIProvider } from './aiProvider';
 
+/**
+ * Attempts to repair truncated JSON by closing incomplete strings, arrays, and objects
+ */
+function repairTruncatedJSON(json: string): string {
+  let repaired = json.trim();
+  
+  // Count unclosed brackets and braces
+  let openBraces = (repaired.match(/\{/g) || []).length;
+  let closeBraces = (repaired.match(/\}/g) || []).length;
+  let openBrackets = (repaired.match(/\[/g) || []).length;
+  let closeBrackets = (repaired.match(/\]/g) || []).length;
+  
+  // Check if we're in the middle of a string (odd number of unescaped quotes)
+  const quoteMatches = repaired.match(/(?<!\\)"/g);
+  const isInString = quoteMatches && quoteMatches.length % 2 !== 0;
+  
+  // If we're in a string, try to close it by finding where it should end
+  if (isInString) {
+    // Find the last quote and see what comes after
+    const lastQuoteIndex = repaired.lastIndexOf('"');
+    if (lastQuoteIndex !== -1) {
+      const afterQuote = repaired.substring(lastQuoteIndex + 1).trim();
+      // If there's content after quote that's not a valid JSON separator, we're mid-string
+      if (afterQuote.length > 0 && !afterQuote.match(/^[\s,}\]:]/)) {
+        // Close the string
+        repaired = repaired.substring(0, lastQuoteIndex + 1);
+      }
+    } else {
+      // No closing quote found, add one at the end
+      repaired += '"';
+    }
+  }
+  
+  // Close incomplete arrays
+  while (openBrackets > closeBrackets) {
+    repaired += ']';
+    closeBrackets++;
+  }
+  
+  // Close incomplete objects
+  while (openBraces > closeBraces) {
+    // Before closing, ensure we're not in the middle of a key-value pair
+    const trimmed = repaired.trim();
+    if (!trimmed.endsWith(',') && !trimmed.endsWith('{') && !trimmed.endsWith('[')) {
+      // Might need to close a value first - but this is complex, so just close the object
+    }
+    repaired += '}';
+    closeBraces++;
+  }
+  
+  return repaired;
+}
+
 export interface AnalysisResult {
   keyTakeaways: string[];
   recommendations?: string[];
@@ -115,6 +168,9 @@ Please format your response as JSON with this structure:
     if (lastBracketIndex !== -1) {
       cleanContent = cleanContent.substring(0, lastBracketIndex + 1);
     }
+    
+    // Try to repair truncated JSON (common with Gemini when responses are cut off)
+    cleanContent = repairTruncatedJSON(cleanContent);
     
     let result: AnalysisResult;
     try {
@@ -263,6 +319,9 @@ Please format your response as JSON with this structure:
       cleanContent = cleanContent.substring(0, lastBracketIndex + 1);
     }
     
+    // Try to repair truncated JSON (common with Gemini when responses are cut off)
+    cleanContent = repairTruncatedJSON(cleanContent);
+    
     let result: AnalysisResult;
     try {
       result = JSON.parse(cleanContent) as AnalysisResult;
@@ -396,6 +455,9 @@ Please format your response as JSON with this structure:
     if (lastBracketIndex !== -1) {
       cleanContent = cleanContent.substring(0, lastBracketIndex + 1);
     }
+    
+    // Try to repair truncated JSON (common with Gemini when responses are cut off)
+    cleanContent = repairTruncatedJSON(cleanContent);
     
     let result: AnalysisResult;
     try {

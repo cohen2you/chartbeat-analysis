@@ -201,6 +201,7 @@ class AIProviderService {
       try {
         // Log the config to verify maxOutputTokens is set
         console.log(`Attempting Gemini model: ${modelName} with maxOutputTokens: ${generationConfig.maxOutputTokens}`);
+        console.log(`Prompt length: ${prompt.length} characters`);
         
         const model = this.gemini.getGenerativeModel({
           model: modelName,
@@ -212,6 +213,17 @@ class AIProviderService {
         const text = response.text();
         
         console.log(`Gemini response length: ${text.length} characters`);
+        
+        // Check if response seems truncated (ends abruptly)
+        if (text.length > 0) {
+          const lastChar = text.trim().slice(-1);
+          const endsWithBrace = lastChar === '}';
+          const endsWithBracket = lastChar === ']';
+          const endsWithQuote = lastChar === '"';
+          if (!endsWithBrace && !endsWithBracket && !endsWithQuote && text.length < 1000) {
+            console.warn(`⚠ Response may be truncated - ends with: "${lastChar}" (length: ${text.length})`);
+          }
+        }
 
         console.log(`✓ Successfully used Gemini model: ${modelName}`);
         return {

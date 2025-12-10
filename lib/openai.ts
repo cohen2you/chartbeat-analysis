@@ -13,23 +13,60 @@ function repairTruncatedJSON(json: string): string {
   let openBrackets = (repaired.match(/\[/g) || []).length;
   let closeBrackets = (repaired.match(/\]/g) || []).length;
   
-  // Check if we're in the middle of a string (odd number of unescaped quotes)
-  const quoteMatches = repaired.match(/(?<!\\)"/g);
-  const isInString = quoteMatches && quoteMatches.length % 2 !== 0;
+  // Check if we're in the middle of a string by counting unescaped quotes
+  // We need to be careful about escaped quotes
+  let quoteCount = 0;
+  let inEscape = false;
+  for (let i = 0; i < repaired.length; i++) {
+    if (inEscape) {
+      inEscape = false;
+      continue;
+    }
+    if (repaired[i] === '\\') {
+      inEscape = true;
+      continue;
+    }
+    if (repaired[i] === '"') {
+      quoteCount++;
+    }
+  }
+  const isInString = quoteCount % 2 !== 0;
   
-  // If we're in a string, try to close it by finding where it should end
+  // If we're in a string, close it
   if (isInString) {
-    // Find the last quote and see what comes after
-    const lastQuoteIndex = repaired.lastIndexOf('"');
+    // Find the last unescaped quote
+    let lastQuoteIndex = -1;
+    inEscape = false;
+    for (let i = repaired.length - 1; i >= 0; i--) {
+      if (i < repaired.length - 1 && repaired[i + 1] === '\\') {
+        // This quote might be escaped, but we're going backwards so check previous char
+        if (i > 0 && repaired[i - 1] === '\\') {
+          // Actually escaped, skip
+          continue;
+        }
+      }
+      if (repaired[i] === '"' && (i === 0 || repaired[i - 1] !== '\\' || (i > 1 && repaired[i - 2] === '\\'))) {
+        // Found an unescaped quote (or quote with even number of backslashes before it)
+        let backslashCount = 0;
+        for (let j = i - 1; j >= 0 && repaired[j] === '\\'; j--) {
+          backslashCount++;
+        }
+        if (backslashCount % 2 === 0) {
+          lastQuoteIndex = i;
+          break;
+        }
+      }
+    }
+    
     if (lastQuoteIndex !== -1) {
       const afterQuote = repaired.substring(lastQuoteIndex + 1).trim();
-      // If there's content after quote that's not a valid JSON separator, we're mid-string
+      // If there's content after the quote that's not a valid JSON separator, we're mid-string
       if (afterQuote.length > 0 && !afterQuote.match(/^[\s,}\]:]/)) {
-        // Close the string
-        repaired = repaired.substring(0, lastQuoteIndex + 1);
+        // We're in the middle of a string value, close it by adding a quote
+        repaired = repaired.substring(0, lastQuoteIndex + 1) + '"';
       }
     } else {
-      // No closing quote found, add one at the end
+      // No closing quote found at all, add one at the end
       repaired += '"';
     }
   }
@@ -40,13 +77,14 @@ function repairTruncatedJSON(json: string): string {
     closeBrackets++;
   }
   
-  // Close incomplete objects
+  // Close incomplete objects - need to be careful about trailing commas
+  const trimmed = repaired.trim();
+  if (trimmed.endsWith(',')) {
+    // Remove trailing comma before closing objects
+    repaired = repaired.replace(/,\s*$/, '');
+  }
+  
   while (openBraces > closeBraces) {
-    // Before closing, ensure we're not in the middle of a key-value pair
-    const trimmed = repaired.trim();
-    if (!trimmed.endsWith(',') && !trimmed.endsWith('{') && !trimmed.endsWith('[')) {
-      // Might need to close a value first - but this is complex, so just close the object
-    }
     repaired += '}';
     closeBraces++;
   }

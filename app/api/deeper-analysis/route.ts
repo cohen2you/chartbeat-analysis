@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCSV, getDataSummary } from '@/lib/csvParser';
 import { aiProvider, AIProvider } from '@/lib/aiProvider';
+import { repairTruncatedJSON } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {
   try {
@@ -161,9 +162,37 @@ Please format your response as JSON with this structure:
       }
     );
 
-    const content = response.content;
+    // Clean and repair the response
+    let cleanContent = response.content.trim();
+    
+    // Remove markdown code blocks
+    cleanContent = cleanContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    
+    // Try to find JSON object if wrapped in other text
+    const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanContent = jsonMatch[0];
+    }
+    
+    // Find the last closing bracket and truncate after it
+    const lastBracketIndex = cleanContent.lastIndexOf('}');
+    if (lastBracketIndex !== -1) {
+      cleanContent = cleanContent.substring(0, lastBracketIndex + 1);
+    }
+    
+    // Repair truncated JSON
+    cleanContent = repairTruncatedJSON(cleanContent);
 
-    const result = JSON.parse(content);
+    let result;
+    try {
+      result = JSON.parse(cleanContent);
+    } catch (parseError: any) {
+      console.error('JSON Parse Error. Cleaned content length:', cleanContent.length);
+      console.error('Parse error at position:', parseError.message);
+      console.error('First 500 chars:', cleanContent.substring(0, 500));
+      console.error('Last 500 chars:', cleanContent.substring(Math.max(0, cleanContent.length - 500)));
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
     return NextResponse.json({
       success: true,
       deeperAnalysis: result,

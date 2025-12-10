@@ -4,7 +4,7 @@ import { aiProvider, AIProvider } from './aiProvider';
 /**
  * Attempts to repair truncated JSON by closing incomplete strings, arrays, and objects
  */
-function repairTruncatedJSON(json: string): string {
+export function repairTruncatedJSON(json: string): string {
   let repaired = json.trim();
   
   // Count unclosed brackets and braces

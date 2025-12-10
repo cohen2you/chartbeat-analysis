@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       // Look for patterns like "Best performing article: [title] - [views] views"
       const bestArticleMatches = statsText.match(/best performing article[:\-]?\s*([^\n]+?)\s*[-–]\s*(\d+[\d,]*)\s*views/gi);
       if (bestArticleMatches && bestArticleMatches.length > 0) {
-        topArticlesContext = `\nTop Performing Articles (from analysis):\n${bestArticleMatches.slice(0, 10).map((m, i) => `${i + 1}. ${m}`).join('\n')}\n`;
+        topArticlesContext = `\nTop Performing Articles (from analysis):\n${bestArticleMatches.slice(0, 10).map((m: string, i: number) => `${i + 1}. ${m}`).join('\n')}\n`;
       }
     }
 

@@ -67,6 +67,7 @@ interface AnalysisResult {
     performanceTrends?: string;
     actionableRecommendations?: string;
   };
+  meetingSummary?: string[];
 }
 
 export default function Home() {
@@ -80,6 +81,7 @@ export default function Home() {
   const [isLoadingDeeperAnalysis, setIsLoadingDeeperAnalysis] = useState(false);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
   const [isLoadingPeriodComparison, setIsLoadingPeriodComparison] = useState(false);
+  const [isLoadingMeetingSummary, setIsLoadingMeetingSummary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<'team' | 'single-writer' | null>(null);
@@ -372,6 +374,45 @@ export default function Home() {
     }
   };
 
+  const handleGenerateMeetingSummary = async () => {
+    if (!analysis) {
+      setError('Please run an analysis first.');
+      return;
+    }
+
+    setIsLoadingMeetingSummary(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/meeting-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          analysis,
+          provider: aiProvider,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate meeting summary');
+      }
+
+      // Update analysis with meeting summary
+      setAnalysis({
+        ...analysis,
+        meetingSummary: result.meetingSummary || [],
+      });
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while generating meeting summary.');
+    } finally {
+      setIsLoadingMeetingSummary(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -479,6 +520,8 @@ export default function Home() {
                 isLoadingComparison={isLoadingComparison}
                 onComparePeriods={handleComparePeriods}
                 isLoadingPeriodComparison={isLoadingPeriodComparison}
+                onGenerateMeetingSummary={handleGenerateMeetingSummary}
+                isLoadingMeetingSummary={isLoadingMeetingSummary}
                 fileCount={csvData.length}
                 fileNames={fileNames}
                 analysisMode={analysisMode}

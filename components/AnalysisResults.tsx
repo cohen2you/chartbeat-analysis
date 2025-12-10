@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, TrendingUp, BarChart3, Trophy, Award, Medal } from 'lucide-react';
+import { CheckCircle2, TrendingUp, BarChart3, Trophy, Award, Medal, Presentation } from 'lucide-react';
 
 interface WriterRanking {
   rank: number;
@@ -66,6 +66,7 @@ interface AnalysisResult {
     performanceTrends?: string;
     actionableRecommendations?: string;
   };
+  meetingSummary?: string[];
 }
 
 interface AnalysisResultsProps {
@@ -79,6 +80,8 @@ interface AnalysisResultsProps {
   isLoadingComparison?: boolean;
   onComparePeriods?: () => void;
   isLoadingPeriodComparison?: boolean;
+  onGenerateMeetingSummary?: () => void;
+  isLoadingMeetingSummary?: boolean;
   fileCount?: number;
   fileNames?: string[];
   analysisMode?: 'team' | 'single-writer' | null;
@@ -95,6 +98,8 @@ export default function AnalysisResults({
   isLoadingComparison,
   onComparePeriods,
   isLoadingPeriodComparison,
+  onGenerateMeetingSummary,
+  isLoadingMeetingSummary,
   fileCount = 1,
   fileNames = [],
   analysisMode = null
@@ -1147,6 +1152,53 @@ export default function AnalysisResults({
         )}
       </div>
       )}
+
+      {/* Meeting Summary Section */}
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg p-6 border border-purple-200 dark:border-purple-800 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Presentation className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Meeting Summary
+            </h2>
+            <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
+              10 Key Points
+            </span>
+          </div>
+          {onGenerateMeetingSummary && (
+            <button
+              onClick={onGenerateMeetingSummary}
+              disabled={isLoadingMeetingSummary}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm shadow-sm"
+            >
+              {isLoadingMeetingSummary ? 'Regenerating...' : result.meetingSummary ? 'Regenerate Summary' : 'Generate Summary'}
+            </button>
+          )}
+        </div>
+        
+        {isLoadingMeetingSummary ? (
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
+          </div>
+        ) : result.meetingSummary && result.meetingSummary.length > 0 ? (
+          <ol className="space-y-3">
+            {result.meetingSummary.map((point, index) => (
+              <li key={index} className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                  {index + 1}
+                </span>
+                <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{point}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            Click "Generate Summary" to create a concise 10-bullet-point executive summary synthesizing all analysis data, perfect for meeting presentations.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

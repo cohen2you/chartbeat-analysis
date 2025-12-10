@@ -36,6 +36,7 @@ interface AnalysisResult {
     temporalAnalysis?: string;
     strategicInsights?: string;
   };
+  meetingSummary?: string[];
 }
 
 interface FullAnalysisModalProps {
@@ -155,6 +156,15 @@ export default function FullAnalysisModal({
         const statusIcon = status === 'accepted' ? '✓' : status === 'rejected' ? '✗' : '○';
         text += `${statusIcon} ${idx + 1}. ${rec}\n`;
       });
+      text += '\n';
+    }
+
+    if (data.meetingSummary && data.meetingSummary.length > 0) {
+      text += '=== MEETING SUMMARY (10 KEY POINTS) ===\n';
+      data.meetingSummary.forEach((point, idx) => {
+        text += `${idx + 1}. ${point}\n`;
+      });
+      text += '\n';
     }
 
     return text;
@@ -435,6 +445,27 @@ export default function FullAnalysisModal({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Meeting Summary */}
+              {result.meetingSummary && result.meetingSummary.length > 0 && (
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg p-6 border border-purple-200 dark:border-purple-800">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <span className="text-purple-600 dark:text-purple-400">📊</span>
+                    Meeting Summary
+                    <span className="text-sm font-normal text-gray-600 dark:text-gray-400">(10 Key Points)</span>
+                  </h3>
+                  <ol className="space-y-3">
+                    {result.meetingSummary.map((point, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                          {index + 1}
+                        </span>
+                        <span className="text-gray-700 dark:text-gray-300 leading-relaxed">{point}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               )}
             </div>

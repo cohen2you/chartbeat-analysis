@@ -49,11 +49,18 @@ interface AnalysisResult {
     recommendations?: string;
   };
   comparison?: {
-    authorComparisons?: string;
-    overallSummary?: string;
-    keyDifferences?: string;
+    authorComparisons?: string | Array<{ author: string; bullets: string[] }>;
+    overallSummary?: string | string[];
+    keyDifferences?: string | string[];
     dataset1Stats?: string;
     dataset2Stats?: string;
+  };
+  metricsComparison?: {
+    overallMetrics?: string[];
+    sectionComparison?: string[];
+    referrerComparison?: string[];
+    topArticlesComparison?: string[];
+    keyInsights?: string[];
   };
   deeperAnalysis?: {
     titleAnalysis?: string;
@@ -80,6 +87,8 @@ interface AnalysisResultsProps {
   isLoadingComparison?: boolean;
   onComparePeriods?: () => void;
   isLoadingPeriodComparison?: boolean;
+  onGenerateMetricsComparison?: () => void;
+  isLoadingMetricsComparison?: boolean;
   onGenerateMeetingSummary?: () => void;
   isLoadingMeetingSummary?: boolean;
   fileCount?: number;
@@ -98,6 +107,8 @@ export default function AnalysisResults({
   isLoadingComparison,
   onComparePeriods,
   isLoadingPeriodComparison,
+  onGenerateMetricsComparison,
+  isLoadingMetricsComparison,
   onGenerateMeetingSummary,
   isLoadingMeetingSummary,
   fileCount = 1,
@@ -742,19 +753,40 @@ export default function AnalysisResults({
             <div className="space-y-6">
               {result.comparison.authorComparisons && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-300 dark:border-gray-600">
                     Author-by-Author Comparison
                   </h3>
-                  <div className="prose dark:prose-invert max-w-none">
-                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-sm">
-                      {typeof result.comparison.authorComparisons === 'string' 
-                        ? result.comparison.authorComparisons.split('\n').map((line: string, idx: number) => (
-                            <div key={idx} className="mb-1">
-                              {line.trim() && !line.trim().startsWith('•') ? `  ${line}` : line}
-                            </div>
-                          ))
-                        : JSON.stringify(result.comparison.authorComparisons, null, 2)}
-                    </div>
+                  <div className="space-y-4">
+                    {Array.isArray(result.comparison.authorComparisons) ? (
+                      result.comparison.authorComparisons.map((authorComp: any, idx: number) => (
+                        <div key={idx} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                            {authorComp.author || `Author ${idx + 1}`}
+                          </h4>
+                          <ul className="space-y-1.5 ml-4">
+                            {Array.isArray(authorComp.bullets) ? (
+                              authorComp.bullets.map((bullet: string, bulletIdx: number) => (
+                                <li key={bulletIdx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                  {bullet.startsWith('•') ? bullet : `• ${bullet}`}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-gray-700 dark:text-gray-300 text-sm">
+                                {typeof authorComp.bullets === 'string' ? authorComp.bullets : JSON.stringify(authorComp)}
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      ))
+                    ) : typeof result.comparison.authorComparisons === 'string' ? (
+                      <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line text-sm">
+                        {result.comparison.authorComparisons}
+                      </div>
+                    ) : (
+                      <div className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                        {JSON.stringify(result.comparison.authorComparisons, null, 2)}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -763,17 +795,25 @@ export default function AnalysisResults({
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
                     Overall Comparison Summary
                   </h3>
-                  <div className="prose dark:prose-invert max-w-none">
-                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-sm">
-                      {typeof result.comparison.overallSummary === 'string' 
-                        ? result.comparison.overallSummary.split('\n').map((line: string, idx: number) => (
-                            <div key={idx} className="mb-1">
-                              {line.trim() && !line.trim().startsWith('•') ? `  ${line}` : line}
-                            </div>
-                          ))
-                        : JSON.stringify(result.comparison.overallSummary, null, 2)}
-                    </div>
-                  </div>
+                  <ul className="space-y-2 ml-4">
+                    {Array.isArray(result.comparison.overallSummary) ? (
+                      result.comparison.overallSummary.map((item: string, idx: number) => (
+                        <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                          {item.startsWith('•') ? item : `• ${item}`}
+                        </li>
+                      ))
+                    ) : typeof result.comparison.overallSummary === 'string' ? (
+                      result.comparison.overallSummary.split('\n').map((line: string, idx: number) => (
+                        <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                          {line.trim() ? (line.trim().startsWith('•') ? line.trim() : `• ${line.trim()}`) : null}
+                        </li>
+                      )).filter(Boolean)
+                    ) : (
+                      <li className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                        {JSON.stringify(result.comparison.overallSummary, null, 2)}
+                      </li>
+                    )}
+                  </ul>
                 </div>
               )}
               {result.comparison.keyDifferences && (
@@ -781,23 +821,139 @@ export default function AnalysisResults({
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
                     Key Differences
                   </h3>
-                  <div className="prose dark:prose-invert max-w-none">
-                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-sm">
-                      {typeof result.comparison.keyDifferences === 'string' 
-                        ? result.comparison.keyDifferences.split('\n').map((line: string, idx: number) => (
-                            <div key={idx} className="mb-1">
-                              {line.trim() && !line.trim().startsWith('•') ? `  ${line}` : line}
-                            </div>
-                          ))
-                        : JSON.stringify(result.comparison.keyDifferences, null, 2)}
-                    </div>
-                  </div>
+                  <ul className="space-y-2 ml-4">
+                    {Array.isArray(result.comparison.keyDifferences) ? (
+                      result.comparison.keyDifferences.map((item: string, idx: number) => (
+                        <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                          {item.startsWith('•') ? item : `• ${item}`}
+                        </li>
+                      ))
+                    ) : typeof result.comparison.keyDifferences === 'string' ? (
+                      result.comparison.keyDifferences.split('\n').map((line: string, idx: number) => (
+                        <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                          {line.trim() ? (line.trim().startsWith('•') ? line.trim() : `• ${line.trim()}`) : null}
+                        </li>
+                      )).filter(Boolean)
+                    ) : (
+                      <li className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                        {JSON.stringify(result.comparison.keyDifferences, null, 2)}
+                      </li>
+                    )}
+                  </ul>
                 </div>
               )}
             </div>
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-sm">
               Click "Generate Comparison Analysis" to get detailed author-by-author comparisons between the two datasets.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Metrics Comparison (for 2 files) - Only show for team mode */}
+      {isComparisonMode && !isSingleWriterMode && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-blue-500" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Metrics Comparison (Non-Author)
+              </h2>
+            </div>
+            {!result.metricsComparison && onGenerateMetricsComparison && (
+              <button
+                onClick={onGenerateMetricsComparison}
+                disabled={isLoadingMetricsComparison}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm"
+              >
+                {isLoadingMetricsComparison ? 'Generating...' : 'Compare Metrics'}
+              </button>
+            )}
+          </div>
+          
+          {isLoadingMetricsComparison ? (
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
+            </div>
+          ) : result.metricsComparison ? (
+            <div className="space-y-6">
+              {result.metricsComparison.overallMetrics && result.metricsComparison.overallMetrics.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                    Overall Metrics
+                  </h3>
+                  <ul className="space-y-2 ml-4">
+                    {result.metricsComparison.overallMetrics.map((item: string, idx: number) => (
+                      <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                        {item.startsWith('•') ? item : `• ${item}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {result.metricsComparison.sectionComparison && result.metricsComparison.sectionComparison.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                    Section Performance Comparison
+                  </h3>
+                  <ul className="space-y-2 ml-4">
+                    {result.metricsComparison.sectionComparison.map((item: string, idx: number) => (
+                      <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                        {item.startsWith('•') ? item : `• ${item}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {result.metricsComparison.referrerComparison && result.metricsComparison.referrerComparison.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                    Referrer Performance Comparison
+                  </h3>
+                  <ul className="space-y-2 ml-4">
+                    {result.metricsComparison.referrerComparison.map((item: string, idx: number) => (
+                      <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                        {item.startsWith('•') ? item : `• ${item}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {result.metricsComparison.topArticlesComparison && result.metricsComparison.topArticlesComparison.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                    Top Articles Comparison
+                  </h3>
+                  <ul className="space-y-2 ml-4">
+                    {result.metricsComparison.topArticlesComparison.map((item: string, idx: number) => (
+                      <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                        {item.startsWith('•') ? item : `• ${item}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {result.metricsComparison.keyInsights && result.metricsComparison.keyInsights.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                    Key Insights
+                  </h3>
+                  <ul className="space-y-2 ml-4">
+                    {result.metricsComparison.keyInsights.map((item: string, idx: number) => (
+                      <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                        {item.startsWith('•') ? item : `• ${item}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Click "Compare Metrics" to analyze non-author metrics like sections, referrers, top articles, and overall pageviews between the two datasets.
             </p>
           )}
         </div>

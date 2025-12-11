@@ -24,11 +24,18 @@ interface AnalysisResult {
   writerRankings?: WriterRanking[];
   individualStats?: string[];
   comparison?: {
-    authorComparisons?: string;
-    overallSummary?: string;
-    keyDifferences?: string;
+    authorComparisons?: string | Array<{ author: string; bullets: string[] }>;
+    overallSummary?: string | string[];
+    keyDifferences?: string | string[];
     dataset1Stats?: string;
     dataset2Stats?: string;
+  };
+  metricsComparison?: {
+    overallMetrics?: string[];
+    sectionComparison?: string[];
+    referrerComparison?: string[];
+    topArticlesComparison?: string[];
+    keyInsights?: string[];
   };
   deeperAnalysis?: {
     titleAnalysis?: string;
@@ -121,15 +128,93 @@ export default function FullAnalysisModal({
     }
 
     if (data.comparison) {
-      text += '=== COMPARISON ANALYSIS ===\n';
-      if (data.comparison.overallSummary) {
-        text += data.comparison.overallSummary + '\n\n';
-      }
+      text += '=== COMPARISON ANALYSIS ===\n\n';
+      
       if (data.comparison.authorComparisons) {
-        text += data.comparison.authorComparisons + '\n\n';
+        text += '--- Author-by-Author Comparison ---\n';
+        if (Array.isArray(data.comparison.authorComparisons)) {
+          data.comparison.authorComparisons.forEach((authorComp: any) => {
+            text += `\n${authorComp.author || 'Unknown Author'}:\n`;
+            if (Array.isArray(authorComp.bullets)) {
+              authorComp.bullets.forEach((bullet: string) => {
+                text += `  ${bullet.startsWith('•') ? bullet : `• ${bullet}`}\n`;
+              });
+            } else {
+              text += `  ${authorComp.bullets || JSON.stringify(authorComp)}\n`;
+            }
+          });
+        } else {
+          text += data.comparison.authorComparisons + '\n';
+        }
+        text += '\n';
       }
+      
+      if (data.comparison.overallSummary) {
+        text += '--- Overall Summary ---\n';
+        if (Array.isArray(data.comparison.overallSummary)) {
+          data.comparison.overallSummary.forEach((item: string) => {
+            text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+          });
+        } else {
+          text += data.comparison.overallSummary + '\n';
+        }
+        text += '\n';
+      }
+      
       if (data.comparison.keyDifferences) {
-        text += data.comparison.keyDifferences + '\n\n';
+        text += '--- Key Differences ---\n';
+        if (Array.isArray(data.comparison.keyDifferences)) {
+          data.comparison.keyDifferences.forEach((item: string) => {
+            text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+          });
+        } else {
+          text += data.comparison.keyDifferences + '\n';
+        }
+        text += '\n';
+      }
+    }
+
+    if (data.metricsComparison) {
+      text += '=== METRICS COMPARISON (NON-AUTHOR) ===\n\n';
+      
+      if (data.metricsComparison.overallMetrics && data.metricsComparison.overallMetrics.length > 0) {
+        text += '--- Overall Metrics ---\n';
+        data.metricsComparison.overallMetrics.forEach((item: string) => {
+          text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+        });
+        text += '\n';
+      }
+      
+      if (data.metricsComparison.sectionComparison && data.metricsComparison.sectionComparison.length > 0) {
+        text += '--- Section Performance Comparison ---\n';
+        data.metricsComparison.sectionComparison.forEach((item: string) => {
+          text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+        });
+        text += '\n';
+      }
+      
+      if (data.metricsComparison.referrerComparison && data.metricsComparison.referrerComparison.length > 0) {
+        text += '--- Referrer Performance Comparison ---\n';
+        data.metricsComparison.referrerComparison.forEach((item: string) => {
+          text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+        });
+        text += '\n';
+      }
+      
+      if (data.metricsComparison.topArticlesComparison && data.metricsComparison.topArticlesComparison.length > 0) {
+        text += '--- Top Articles Comparison ---\n';
+        data.metricsComparison.topArticlesComparison.forEach((item: string) => {
+          text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+        });
+        text += '\n';
+      }
+      
+      if (data.metricsComparison.keyInsights && data.metricsComparison.keyInsights.length > 0) {
+        text += '--- Key Insights ---\n';
+        data.metricsComparison.keyInsights.forEach((item: string) => {
+          text += `  ${item.startsWith('•') ? item : `• ${item}`}\n`;
+        });
+        text += '\n';
       }
     }
 
@@ -346,23 +431,70 @@ export default function FullAnalysisModal({
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Comparison Analysis
                   </h3>
+                  {result.comparison.authorComparisons && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Author Comparisons</h4>
+                      <div className="space-y-3">
+                        {Array.isArray(result.comparison.authorComparisons) ? (
+                          result.comparison.authorComparisons.map((authorComp: any, idx: number) => (
+                            <div key={idx} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                              <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                {authorComp.author || `Author ${idx + 1}`}
+                              </h5>
+                              <ul className="space-y-1.5 ml-4">
+                                {Array.isArray(authorComp.bullets) ? (
+                                  authorComp.bullets.map((bullet: string, bulletIdx: number) => (
+                                    <li key={bulletIdx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                      {bullet.startsWith('•') ? bullet : `• ${bullet}`}
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li className="text-gray-700 dark:text-gray-300 text-sm">
+                                    {typeof authorComp.bullets === 'string' ? authorComp.bullets : JSON.stringify(authorComp)}
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          ))
+                        ) : typeof result.comparison.authorComparisons === 'string' ? (
+                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                            <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                              {result.comparison.authorComparisons}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                            <pre className="text-sm text-gray-700 dark:text-gray-300 font-mono">
+                              {JSON.stringify(result.comparison.authorComparisons, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {result.comparison.overallSummary && (
                     <div className="mb-4">
                       <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Overall Summary</h4>
                       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
-                          {result.comparison.overallSummary}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                  {result.comparison.authorComparisons && (
-                    <div className="mb-4">
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Author Comparisons</h4>
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
-                          {result.comparison.authorComparisons}
-                        </pre>
+                        <ul className="space-y-2 ml-4">
+                          {Array.isArray(result.comparison.overallSummary) ? (
+                            result.comparison.overallSummary.map((item: string, idx: number) => (
+                              <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                {item.startsWith('•') ? item : `• ${item}`}
+                              </li>
+                            ))
+                          ) : typeof result.comparison.overallSummary === 'string' ? (
+                            result.comparison.overallSummary.split('\n').map((line: string, idx: number) => (
+                              <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                {line.trim() ? (line.trim().startsWith('•') ? line.trim() : `• ${line.trim()}`) : null}
+                              </li>
+                            )).filter(Boolean)
+                          ) : (
+                            <li className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                              {JSON.stringify(result.comparison.overallSummary, null, 2)}
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     </div>
                   )}
@@ -370,9 +502,104 @@ export default function FullAnalysisModal({
                     <div>
                       <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Key Differences</h4>
                       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
-                          {result.comparison.keyDifferences}
-                        </pre>
+                        <ul className="space-y-2 ml-4">
+                          {Array.isArray(result.comparison.keyDifferences) ? (
+                            result.comparison.keyDifferences.map((item: string, idx: number) => (
+                              <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                {item.startsWith('•') ? item : `• ${item}`}
+                              </li>
+                            ))
+                          ) : typeof result.comparison.keyDifferences === 'string' ? (
+                            result.comparison.keyDifferences.split('\n').map((line: string, idx: number) => (
+                              <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                                {line.trim() ? (line.trim().startsWith('•') ? line.trim() : `• ${line.trim()}`) : null}
+                              </li>
+                            )).filter(Boolean)
+                          ) : (
+                            <li className="text-gray-700 dark:text-gray-300 text-sm font-mono">
+                              {JSON.stringify(result.comparison.keyDifferences, null, 2)}
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Metrics Comparison */}
+              {result.metricsComparison && (
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Metrics Comparison (Non-Author)
+                  </h3>
+                  {result.metricsComparison.overallMetrics && result.metricsComparison.overallMetrics.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Overall Metrics</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <ul className="space-y-2 ml-4">
+                          {result.metricsComparison.overallMetrics.map((item: string, idx: number) => (
+                            <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                              {item.startsWith('•') ? item : `• ${item}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {result.metricsComparison.sectionComparison && result.metricsComparison.sectionComparison.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Section Performance Comparison</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <ul className="space-y-2 ml-4">
+                          {result.metricsComparison.sectionComparison.map((item: string, idx: number) => (
+                            <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                              {item.startsWith('•') ? item : `• ${item}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {result.metricsComparison.referrerComparison && result.metricsComparison.referrerComparison.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Referrer Performance Comparison</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <ul className="space-y-2 ml-4">
+                          {result.metricsComparison.referrerComparison.map((item: string, idx: number) => (
+                            <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                              {item.startsWith('•') ? item : `• ${item}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {result.metricsComparison.topArticlesComparison && result.metricsComparison.topArticlesComparison.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Top Articles Comparison</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <ul className="space-y-2 ml-4">
+                          {result.metricsComparison.topArticlesComparison.map((item: string, idx: number) => (
+                            <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                              {item.startsWith('•') ? item : `• ${item}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {result.metricsComparison.keyInsights && result.metricsComparison.keyInsights.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Key Insights</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <ul className="space-y-2 ml-4">
+                          {result.metricsComparison.keyInsights.map((item: string, idx: number) => (
+                            <li key={idx} className="text-gray-700 dark:text-gray-300 text-sm">
+                              {item.startsWith('•') ? item : `• ${item}`}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
                   )}

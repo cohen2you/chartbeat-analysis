@@ -50,11 +50,18 @@ interface AnalysisResult {
     recommendations?: string;
   };
   comparison?: {
-    authorComparisons?: string;
-    overallSummary?: string;
-    keyDifferences?: string;
+    authorComparisons?: string | Array<{ author: string; bullets: string[] }>;
+    overallSummary?: string | string[];
+    keyDifferences?: string | string[];
     dataset1Stats?: string;
     dataset2Stats?: string;
+  };
+  metricsComparison?: {
+    overallMetrics?: string[];
+    sectionComparison?: string[];
+    referrerComparison?: string[];
+    topArticlesComparison?: string[];
+    keyInsights?: string[];
   };
   deeperAnalysis?: {
     titleAnalysis?: string;
@@ -81,6 +88,7 @@ export default function Home() {
   const [isLoadingDeeperAnalysis, setIsLoadingDeeperAnalysis] = useState(false);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
   const [isLoadingPeriodComparison, setIsLoadingPeriodComparison] = useState(false);
+  const [isLoadingMetricsComparison, setIsLoadingMetricsComparison] = useState(false);
   const [isLoadingMeetingSummary, setIsLoadingMeetingSummary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
@@ -374,6 +382,48 @@ export default function Home() {
     }
   };
 
+  const handleGenerateMetricsComparison = async () => {
+    if (csvData.length !== 2) {
+      setError('Metrics comparison requires exactly 2 CSV files.');
+      return;
+    }
+
+    setIsLoadingMetricsComparison(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/metrics-comparison', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          csvData,
+          fileNames,
+          provider: aiProvider,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate metrics comparison');
+      }
+
+      // Update analysis with metrics comparison
+      if (analysis) {
+        setAnalysis({
+          ...analysis,
+          metricsComparison: result.metricsComparison || {},
+        });
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while generating metrics comparison.');
+    } finally {
+      setIsLoadingMetricsComparison(false);
+    }
+  };
+
   const handleGenerateMeetingSummary = async () => {
     if (!analysis) {
       setError('Please run an analysis first.');
@@ -520,6 +570,8 @@ export default function Home() {
                 isLoadingComparison={isLoadingComparison}
                 onComparePeriods={handleComparePeriods}
                 isLoadingPeriodComparison={isLoadingPeriodComparison}
+                onGenerateMetricsComparison={handleGenerateMetricsComparison}
+                isLoadingMetricsComparison={isLoadingMetricsComparison}
                 onGenerateMeetingSummary={handleGenerateMeetingSummary}
                 isLoadingMeetingSummary={isLoadingMeetingSummary}
                 fileCount={csvData.length}

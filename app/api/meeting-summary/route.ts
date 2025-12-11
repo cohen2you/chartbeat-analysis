@@ -30,16 +30,40 @@ export async function POST(request: NextRequest) {
     const hasWriterFeedback = analysis.writerFeedback && analysis.writerFeedback.trim().length > 0;
     const hasPeriodComparison = analysis.periodComparison && Object.keys(analysis.periodComparison).length > 0;
     const hasComparison = analysis.comparison && Object.keys(analysis.comparison).length > 0;
+    const hasMetricsComparison = analysis.metricsComparison && Object.keys(analysis.metricsComparison).length > 0;
 
-    // Extract top articles from statsByAuthor if available (for specific references)
+    // Extract diverse metrics from statsByAuthor if available
     let topArticlesContext = '';
+    let referrerContext = '';
+    let sectionContext = '';
+    let overallMetricsContext = '';
+    
     if (analysis.statsByAuthor) {
-      // Try to extract top performing articles mentioned in statsByAuthor
       const statsText = analysis.statsByAuthor;
-      // Look for patterns like "Best performing article: [title] - [views] views"
+      
+      // Extract top performing articles
       const bestArticleMatches = statsText.match(/best performing article[:\-]?\s*([^\n]+?)\s*[-–]\s*(\d+[\d,]*)\s*views/gi);
       if (bestArticleMatches && bestArticleMatches.length > 0) {
-        topArticlesContext = `\nTop Performing Articles (from analysis):\n${bestArticleMatches.slice(0, 10).map((m: string, i: number) => `${i + 1}. ${m}`).join('\n')}\n`;
+        topArticlesContext = `\nTop Performing Articles:\n${bestArticleMatches.slice(0, 10).map((m: string, i: number) => `${i + 1}. ${m}`).join('\n')}\n`;
+      }
+      
+      // Extract referrer information
+      const referrerSection = statsText.match(/=== TOP REFERRERS ===\s*([\s\S]*?)(?=\n===|\n\n|$)/i);
+      if (referrerSection && referrerSection[1]) {
+        referrerContext = `\nTop Referrers:\n${referrerSection[1].trim()}\n`;
+      }
+      
+      // Extract section information
+      const sectionSection = statsText.match(/=== SECTION PERFORMANCE ===\s*([\s\S]*?)(?=\n===|\n\n|$)/i);
+      if (sectionSection && sectionSection[1]) {
+        sectionContext = `\nSection Performance:\n${sectionSection[1].trim()}\n`;
+      }
+      
+      // Extract overall metrics (total views, articles, etc.)
+      const totalViewsMatch = statsText.match(/total.*views?[:\-]?\s*(\d+[\d,]*)/gi);
+      const totalArticlesMatch = statsText.match(/total.*articles?[:\-]?\s*(\d+[\d,]*)/gi);
+      if (totalViewsMatch || totalArticlesMatch) {
+        overallMetricsContext = `\nOverall Metrics:\n${totalViewsMatch ? totalViewsMatch.slice(0, 3).join('\n') : ''}\n${totalArticlesMatch ? totalArticlesMatch.slice(0, 3).join('\n') : ''}\n`;
       }
     }
 
@@ -87,8 +111,16 @@ ${analysis.periodComparison.recommendations ? `Recommendations: ${analysis.perio
 ` : ''}
 
 ${hasComparison ? `\nCOMPARISON ANALYSIS (Cross-Period Insights Available):
-${analysis.comparison.overallSummary ? `Overall Summary: ${analysis.comparison.overallSummary.substring(0, 1000)}\n` : ''}
-${analysis.comparison.keyDifferences ? `Key Differences: ${analysis.comparison.keyDifferences.substring(0, 1000)}\n` : ''}
+${analysis.comparison.overallSummary ? `Overall Summary: ${Array.isArray(analysis.comparison.overallSummary) ? analysis.comparison.overallSummary.join('\n') : analysis.comparison.overallSummary.substring(0, 1000)}\n` : ''}
+${analysis.comparison.keyDifferences ? `Key Differences: ${Array.isArray(analysis.comparison.keyDifferences) ? analysis.comparison.keyDifferences.join('\n') : analysis.comparison.keyDifferences.substring(0, 1000)}\n` : ''}
+` : ''}
+
+${hasMetricsComparison ? `\nMETRICS COMPARISON (Non-Author Metrics Available):
+${analysis.metricsComparison.overallMetrics && analysis.metricsComparison.overallMetrics.length > 0 ? `Overall Metrics: ${analysis.metricsComparison.overallMetrics.join('\n')}\n` : ''}
+${analysis.metricsComparison.sectionComparison && analysis.metricsComparison.sectionComparison.length > 0 ? `Section Comparison: ${analysis.metricsComparison.sectionComparison.join('\n')}\n` : ''}
+${analysis.metricsComparison.referrerComparison && analysis.metricsComparison.referrerComparison.length > 0 ? `Referrer Comparison: ${analysis.metricsComparison.referrerComparison.join('\n')}\n` : ''}
+${analysis.metricsComparison.topArticlesComparison && analysis.metricsComparison.topArticlesComparison.length > 0 ? `Top Articles Comparison: ${analysis.metricsComparison.topArticlesComparison.join('\n')}\n` : ''}
+${analysis.metricsComparison.keyInsights && analysis.metricsComparison.keyInsights.length > 0 ? `Key Insights: ${analysis.metricsComparison.keyInsights.join('\n')}\n` : ''}
 ` : ''}
 
 ${analysis.writerRankings && analysis.writerRankings.length > 0 ? `\nWRITER RANKINGS (Use for specific references):
@@ -97,19 +129,39 @@ ${analysis.writerRankings.slice(0, 10).map((r: any, i: number) =>
 ).join('\n')}\n` : ''}
 
 ${topArticlesContext}
+${referrerContext}
+${sectionContext}
+${overallMetricsContext}
 
 ${analysis.timePeriod ? `Time Period: ${analysis.timePeriod}\n` : ''}
 ${analysis.writerName ? `Focus Writer: ${analysis.writerName}\n` : ''}
 
 YOUR TASK:
 Synthesize ALL of the above information into exactly 10 strategic bullet points that:
-1. Identify key strategic opportunities and risks - WITH SPECIFIC NUMBERS
-2. Highlight what's working and what needs attention - WITH CONCRETE EXAMPLES
-3. Provide actionable insights for content strategy - BACKED BY DATA
-4. Surface patterns that inform editorial decisions - WITH METRICS
-5. Focus on "so what" and "what next" rather than just "what happened" - BUT INCLUDE THE DATA
-6. Are discussion-worthy and decision-driving - WITH EVIDENCE
-7. Can be easily shared in a meeting presentation - WITH NUMBERS TO SUPPORT
+1. COVER DIVERSE METRICS - Do NOT focus only on authors. Ensure variety across:
+   - Author performance (max 2-3 points)
+   - Referrer performance and traffic sources
+   - Section performance and content categories
+   - Overall pageview trends and patterns
+   - Top article insights
+   - Comparison insights (if available)
+   - Cross-metric patterns (e.g., "Section X articles get 2x more traffic from Referrer Y")
+2. Identify key strategic opportunities and risks - WITH SPECIFIC NUMBERS
+3. Highlight what's working and what needs attention - WITH CONCRETE EXAMPLES
+4. Provide actionable insights for content strategy - BACKED BY DATA
+5. Surface patterns that inform editorial decisions - WITH METRICS
+6. Focus on "so what" and "what next" rather than just "what happened" - BUT INCLUDE THE DATA
+7. Are discussion-worthy and decision-driving - WITH EVIDENCE
+8. Can be easily shared in a meeting presentation - WITH NUMBERS TO SUPPORT
+
+CRITICAL DIVERSITY REQUIREMENT:
+- Maximum 2-3 bullet points about individual authors
+- At least 1-2 bullet points about referrers/traffic sources
+- At least 1-2 bullet points about sections/content categories
+- At least 1-2 bullet points about overall pageview trends
+- At least 1 bullet point about top articles (if available)
+- At least 1 bullet point about comparison insights (if available)
+- Mix different metric types - don't repeat the same type of insight multiple times
 
 CRITICAL FORMATTING REQUIREMENTS:
 - Every bullet point MUST include specific numbers, percentages, or concrete examples
@@ -118,10 +170,13 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Use percentages and comparisons (e.g., "3x higher", "42% increase", "15.2% of total traffic")
 - Include view counts, article counts, and averages to support strategic points
 
-GOOD EXAMPLES (include numbers and references):
-- "Tech stock analysis drives 3x higher engagement (avg 1,200 views vs 400 views for general news), with Erica Kollmann's Nvidia article generating 3,281 views - suggesting we should prioritize breaking tech earnings coverage"
-- "Henry Khederian's 61 articles generated 26,450 views (23.3% of total traffic) with an average of 434 views/article, demonstrating that volume combined with quality analysis drives significant engagement"
-- "Articles published early in the month average 850 views vs 420 views for late-month publications, indicating we should align our most impactful stories with the beginning of the month"
+GOOD EXAMPLES (diverse metrics with numbers):
+- AUTHOR: "Tech stock analysis drives 3x higher engagement (avg 1,200 views vs 400 views for general news), with Erica Kollmann's Nvidia article generating 3,281 views - suggesting we should prioritize breaking tech earnings coverage"
+- REFERRER: "Smartnews.com drives 45% of total traffic (1.2M views from 350 articles), compared to 12% from direct traffic, indicating we should optimize content for third-party aggregators"
+- SECTION: "Finance section generates 2.5x more views per article (avg 850 views) than Technology section (avg 340 views), suggesting we should expand financial analysis coverage"
+- OVERALL: "Total pageviews increased 34% from Dataset 1 to Dataset 2 (2.1M to 2.8M), driven primarily by 28% increase in article volume, indicating successful content scaling"
+- COMPARISON: "Section performance shifted significantly: Finance increased from 18% to 32% of total views, while Technology decreased from 25% to 15%, suggesting reader interest migration"
+- TOP ARTICLES: "Top 10 articles account for 18% of total traffic (504K views), with average of 50K views each, demonstrating the impact of viral content on overall performance"
 
 BAD EXAMPLES (too generic, no numbers):
 - "Tech articles perform well" (NO - needs numbers)
@@ -145,7 +200,7 @@ Format your response as JSON with this structure:
         [
           {
             role: 'system',
-            content: 'You are a senior editorial strategist creating executive meeting summaries. Your summaries must be strategic, actionable, and decision-driving - NOT just lists of facts. However, EVERY strategic point MUST be backed by specific numbers, percentages, article titles, writer names, and concrete metrics. Focus on "what this means" and "what we should do" rather than "what happened", but always include the supporting data. Always respond with valid JSON. Create exactly 10 bullet points that synthesize complex analysis into high-level strategic insights suitable for leadership discussions, with each point including specific numbers and references.',
+            content: 'You are a senior editorial strategist creating executive meeting summaries. Your summaries must be strategic, actionable, and decision-driving - NOT just lists of facts. However, EVERY strategic point MUST be backed by specific numbers, percentages, article titles, writer names, and concrete metrics. CRITICAL: Ensure DIVERSITY across metric types - do NOT focus only on authors. Include insights about referrers, sections, overall pageviews, top articles, and comparisons. Maximum 2-3 points about individual authors. Focus on "what this means" and "what we should do" rather than "what happened", but always include the supporting data. Always respond with valid JSON. Create exactly 10 bullet points that synthesize complex analysis into high-level strategic insights suitable for leadership discussions, with each point including specific numbers and references, and covering diverse metric types.',
           },
           {
             role: 'user',

@@ -41,34 +41,34 @@ export async function POST(request: NextRequest) {
 
     const prompt = `You are a data analyst helping an editor compare two Chartbeat analytics datasets.
 
-Analyze the following two datasets and provide a DETAILED COMPARISON focusing on differences, changes, and patterns between the datasets.
+Analyze the following two datasets and provide a STRATEGIC COMPARISON focusing on key differences and highlights between the datasets.
 
 CRITICAL REQUIREMENTS:
-- Compare performance for EACH author that appears in either dataset
-- Show specific numbers, percentages, and changes between Dataset 1 and Dataset 2
-- Highlight increases, decreases, and trends
-- Use exact numbers from the data
-- ONLY reference fields/metrics that actually exist in the data
-- Format as bullet points for readability
+- For EACH author that appears in either dataset, provide EXACTLY 2-3 bullet points comparing their performance
+- Each bullet point should highlight a key insight, change, or comparison between Dataset 1 and Dataset 2
+- Include specific numbers and percentages to support each insight
+- Focus on the most significant changes and patterns
+- If an author only appears in one dataset, note that in 1 bullet point
+- Keep bullet points concise and actionable
 
 For your analysis, provide:
 
 1. Author-by-Author Comparison:
-   - For EACH author, compare their performance between Dataset 1 and Dataset 2
-   - Include: total articles, total views, average views per article, best/worst articles
-   - Show percentage changes (e.g., "Author X: 15.2% increase in views from Dataset 1 to Dataset 2")
-   - Highlight significant changes or patterns
-   - If an author only appears in one dataset, note that
+   - An array where each author gets exactly 2-3 bullet points
+   - Each bullet should compare Dataset 1 vs Dataset 2 with specific numbers
+   - Highlight the most important changes (views, articles, averages, etc.)
+   - Example format: "• Total views increased 44.8% (912K → 1.32M) despite 18% fewer articles"
+   - Focus on insights, not raw data dumps
 
 2. Overall Comparison Summary:
+   - 3-5 bullet points summarizing key trends across all authors
    - Total views comparison
    - Average performance changes
-   - Key differences in top performers
-   - Notable trends or shifts between datasets
+   - Notable patterns or shifts
 
 3. Key Differences:
-   - What changed between the two datasets?
-   - Which authors improved/declined?
+   - 3-5 bullet points highlighting the most significant differences between datasets
+   - Which authors improved/declined most?
    - What patterns emerged?
 
 Data:
@@ -76,9 +76,26 @@ ${summaries}
 
 Please format your response as JSON with this structure:
 {
-  "authorComparisons": "Detailed author-by-author comparison. For EACH author, show their stats from Dataset 1 vs Dataset 2 with specific numbers and percentage changes. Format as bullet points.",
-  "overallSummary": "Overall comparison summary with key metrics and changes between datasets. Format as bullet points.",
-  "keyDifferences": "Key differences and notable changes between the two datasets. Format as bullet points."
+  "authorComparisons": [
+    {
+      "author": "Author Name",
+      "bullets": [
+        "• First key insight with specific numbers comparing Dataset 1 to Dataset 2",
+        "• Second key insight with specific numbers",
+        "• Third key insight (if significant)"
+      ]
+    }
+  ],
+  "overallSummary": [
+    "• First overall insight",
+    "• Second overall insight",
+    "• Third overall insight"
+  ],
+  "keyDifferences": [
+    "• First key difference",
+    "• Second key difference",
+    "• Third key difference"
+  ]
 }`;
 
     const response = await aiProvider.generateCompletion(
@@ -133,8 +150,6 @@ Please format your response as JSON with this structure:
     return NextResponse.json({
       success: true,
       comparison: result,
-      dataset1Stats,
-      dataset2Stats,
     });
   } catch (error: any) {
     console.error('Comparison error:', error);

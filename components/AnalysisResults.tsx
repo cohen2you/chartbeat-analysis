@@ -683,7 +683,7 @@ export default function AnalysisResults({
                 </h2>
               </div>
               <div className="prose dark:prose-invert max-w-none">
-                <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-sm">
+                <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-sm max-h-96 overflow-y-auto pr-2">
                   {typeof result.statsByAuthor === 'string' 
                     ? result.statsByAuthor 
                     : JSON.stringify(result.statsByAuthor, null, 2)}
@@ -708,7 +708,7 @@ export default function AnalysisResults({
                       {fileNames[idx] || `Dataset ${idx + 1}`}
                     </h3>
                     <div className="prose dark:prose-invert max-w-none">
-                      <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-xs">
+                      <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line font-mono text-xs max-h-96 overflow-y-auto pr-2">
                         {typeof stats === 'string' 
                           ? stats 
                           : JSON.stringify(stats, null, 2)}

@@ -418,7 +418,7 @@ export default function FullAnalysisModal({
                     Stats By Author
                   </h3>
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                    <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono max-h-96 overflow-y-auto pr-2">
                       {result.statsByAuthor}
                     </pre>
                   </div>

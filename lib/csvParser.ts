@@ -629,19 +629,24 @@ export function generateWriterRankings(parsedData: ParsedCSV): WriterRanking[] {
       articleKey = `article_${index}_${author}`;
     }
     
+    const viewsRaw = row.page_views ?? row['page_views'] ?? 0;
+    const views = typeof viewsRaw === 'number' ? viewsRaw : (Number(viewsRaw) || 0);
+    const uniquesRaw = row.page_uniques ?? row['page_uniques'] ?? 0;
+    const uniques = typeof uniquesRaw === 'number' ? uniquesRaw : (Number(uniquesRaw) || 0);
+    
     if (!articleMap.has(articleKey)) {
-      const viewsRaw = row.page_views ?? row['page_views'] ?? 0;
-      const views = typeof viewsRaw === 'number' ? viewsRaw : (Number(viewsRaw) || 0);
-      const uniquesRaw = row.page_uniques ?? row['page_uniques'] ?? 0;
-      const uniques = typeof uniquesRaw === 'number' ? uniquesRaw : (Number(uniquesRaw) || 0);
-      
       articleMap.set(articleKey, {
         title: title || `Article from ${publishDate || 'Unknown Date'}`,
         author,
-        views,
-        uniques,
+        views: 0,
+        uniques: 0,
       });
     }
+    
+    // Sum views and uniques for articles that appear in multiple rows (different referrers/sections)
+    const article = articleMap.get(articleKey)!;
+    article.views += views;
+    article.uniques += uniques;
   });
   
   const articles = Array.from(articleMap.values());

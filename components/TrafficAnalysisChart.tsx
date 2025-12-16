@@ -91,17 +91,21 @@ export default function TrafficAnalysisChart({ data }: TrafficAnalysisChartProps
               border: '1px solid #e5e7eb',
               borderRadius: '8px'
             }}
-            formatter={(value: any, name: string) => {
-              if (name === 'Pageviews') {
-                return [value.toLocaleString(), name];
+            formatter={(value: any, name: string | undefined): [string, string] => {
+              const safeName = name || '';
+              if (safeName === 'Pageviews') {
+                const formattedValue = typeof value === 'number' 
+                  ? value.toLocaleString() 
+                  : String(value || '');
+                return [formattedValue, safeName];
               }
-              if (name === 'S&P 500 %') {
+              if (safeName === 'S&P 500 %') {
                 const formattedValue = typeof value === 'number' 
                   ? `${value >= 0 ? '+' : ''}${value.toFixed(2)}%` 
-                  : `${value}%`;
-                return [formattedValue, name];
+                  : `${value || ''}%`;
+                return [formattedValue, safeName];
               }
-              return [value, name];
+              return [String(value || ''), safeName];
             }}
           />
           <Legend />

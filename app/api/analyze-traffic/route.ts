@@ -15,7 +15,7 @@ async function fetchSP500Data(dates: string[]): Promise<Map<string, number>> {
   
   try {
     // Get unique dates and sort them
-    const uniqueDates = [...new Set(dates)].sort();
+    const uniqueDates = Array.from(new Set(dates)).sort();
     if (uniqueDates.length === 0) return sp500Map;
 
     // Get date range

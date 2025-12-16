@@ -185,19 +185,20 @@ class AIProviderService {
       generationConfig.maxOutputTokens = 8192;
     }
 
-    // Try different model names - gemini-pro (1.0) is deprecated, use 2.5/1.5 models
-    // Based on Google AI documentation, try these in order
-    const modelNames = options.model ? [options.model] : [
-      'gemini-2.5-flash',      // Current standard (fastest/cost-effective)
-      'gemini-1.5-flash',      // Legacy compatibility
-      'gemini-1.5-pro',        // More capable
-      'gemini-1.5-pro-latest', // Latest 1.5 version
+    // Model Cascading (Waterfall) Strategy
+    // Primary: gemini-3-pro-preview (Smartest, most fragile)
+    // Secondary: gemini-2.5-pro (Stable, high intelligence)
+    // Safety Net: gemini-2.5-flash (Fastest, highest rate limits, cheapest)
+    const modelPriority = options.model ? [options.model] : [
+      'gemini-3-pro-preview',  // 1. Try the genius model
+      'gemini-2.5-pro',        // 2. Fallback to stable pro
+      'gemini-2.5-flash',      // 3. Fallback to the reliable workhorse
     ];
     
     let lastError: any = null;
     
-    // Try each model name until one works
-    for (const modelName of modelNames) {
+    // Try each model in priority order until one works
+    for (const modelName of modelPriority) {
       try {
         // Log the config to verify maxOutputTokens is set
         console.log(`Attempting Gemini model: ${modelName} with maxOutputTokens: ${generationConfig.maxOutputTokens}`);
@@ -232,18 +233,48 @@ class AIProviderService {
         };
       } catch (error: any) {
         lastError = error;
-        // Check if it's a 404 or "not found" error - try next model
-        const isNotFound = error.status === 404 || 
-                          error.message?.includes('not found') || 
-                          error.message?.includes('404') ||
-                          error.errorDetails?.includes('not found');
         
-        if (isNotFound) {
-          console.warn(`Model ${modelName} not found (${error.status || 'unknown'}), trying next...`);
+        // Get HTTP status code from error
+        const statusCode = error.status || 
+                          error.response?.status || 
+                          error.statusCode ||
+                          (error.message?.match(/\[(\d+)\]/)?.[1] ? parseInt(error.message.match(/\[(\d+)\]/)?.[1]) : null);
+        
+        // CRITICAL: Only fallback on specific recoverable errors
+        // 429 = Too Many Requests (Rate Limit)
+        // 503 = Service Unavailable (Overloaded)
+        // 500 = Internal Server Error
+        // 404 = Not Found (Model not available)
+        const isRecoverable = [429, 503, 500, 404].includes(statusCode) ||
+                              error.message?.includes('not found') ||
+                              error.message?.includes('rate limit') ||
+                              error.message?.includes('quota') ||
+                              error.message?.includes('overloaded') ||
+                              error.message?.includes('service unavailable');
+        
+        // Check for non-recoverable errors (safety/blocked content)
+        const isNonRecoverable = error.message?.includes('safety') ||
+                                 error.message?.includes('blocked') ||
+                                 error.message?.includes('content policy') ||
+                                 error.message?.includes('harmful') ||
+                                 statusCode === 400; // Bad Request (usually prompt issues)
+        
+        if (isNonRecoverable) {
+          // If it's a safety/blocked content error, switching models won't help
+          // Fail immediately to avoid wasting quota and latency
+          console.error(`Non-recoverable error with ${modelName}:`, error.message);
+          throw error;
+        }
+        
+        if (isRecoverable) {
+          // Log the error and continue to next model
+          console.warn(`Recoverable error with ${modelName} (${statusCode || 'unknown'}): ${error.message}`);
+          console.warn(`Falling back to next model in cascade...`);
           continue;
         }
-        // For other errors (auth, rate limit, etc), throw immediately
-        console.error(`Gemini API error with model ${modelName}:`, error.message);
+        
+        // Unknown error type - be conservative and throw
+        console.error(`Unknown error type with ${modelName}:`, error.message);
         throw error;
       }
     }
@@ -251,8 +282,8 @@ class AIProviderService {
     // If all models failed, provide helpful error message
     console.error('All Gemini models failed. Last error:', lastError);
     throw new Error(
-      `Gemini API error: None of the available models worked. ` +
-      `This might be due to API key permissions or model availability. ` +
+      `Gemini API error: All models in cascade failed. ` +
+      `This might be due to API key permissions, model availability, or service issues. ` +
       `Please check your Google AI Studio settings. ` +
       `Last error: ${lastError?.message || 'Unknown error'}`
     );

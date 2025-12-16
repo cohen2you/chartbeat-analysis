@@ -99,9 +99,12 @@ export function getDataSummary(parsedData: ParsedCSV): string {
     const avgTimeRaw = row.page_avg_time ?? row['page_avg_time'] ?? 0;
     const avgTime = typeof avgTimeRaw === 'number' ? avgTimeRaw : (Number(avgTimeRaw) || 0);
     
-    article.page_views += views;
-    article.page_uniques += uniques;
-    article.page_views_quality += qualityViews;
+    // Each article has a single total page view number repeated across multiple rows
+    // (one row per section/referrer combination). Use MAX to get the single total value.
+    // Since all rows for the same article have the same view count, MAX = that value.
+    article.page_views = Math.max(article.page_views, views);
+    article.page_uniques = Math.max(article.page_uniques, uniques);
+    article.page_views_quality = Math.max(article.page_views_quality, qualityViews);
     if (row.section || row.Section) article.sections.add(row.section || row.Section);
     if (row.referrer || row.Referrer) article.referrers.add(row.referrer || row.Referrer);
     // Use max avg_time for the article
@@ -608,6 +611,7 @@ export function generateWriterRankings(parsedData: ParsedCSV): WriterRanking[] {
   const hasTitleField = headers.some(h => h.toLowerCase() === 'title');
   
   // First, deduplicate articles by title (same logic as generateStatsByAuthor)
+  // Use EXACT same key format and logic as generateStatsByAuthor for consistency
   const articleMap = new Map<string, any>();
   filteredData.forEach((row, index) => {
     const title = hasTitleField ? (row.title || row.Title || '').trim() : '';
@@ -619,14 +623,14 @@ export function generateWriterRankings(parsedData: ParsedCSV): WriterRanking[] {
       return;
     }
     
-    // Create article identifier
+    // Create article identifier - use EXACT same format as generateStatsByAuthor (line 741-749)
     let articleKey: string;
     if (title) {
-      articleKey = `${author}_${title}`; // Include author to avoid cross-author title collisions
+      articleKey = title; // Same as generateStatsByAuthor - just use title
     } else if (publishDate) {
       articleKey = `${publishDate}_${author}`;
     } else {
-      articleKey = `article_${index}_${author}`;
+      articleKey = `article_${index}`;
     }
     
     const viewsRaw = row.page_views ?? row['page_views'] ?? 0;
@@ -643,10 +647,12 @@ export function generateWriterRankings(parsedData: ParsedCSV): WriterRanking[] {
       });
     }
     
-    // Sum views and uniques for articles that appear in multiple rows (different referrers/sections)
+    // Each article has a single total page view number repeated across multiple rows
+    // (one row per section/referrer combination). Use MAX to get the single total value.
+    // Since all rows for the same article have the same view count, MAX = that value.
     const article = articleMap.get(articleKey)!;
-    article.views += views;
-    article.uniques += uniques;
+    article.views = Math.max(article.views, views);
+    article.uniques = Math.max(article.uniques, uniques);
   });
   
   const articles = Array.from(articleMap.values());
@@ -777,9 +783,13 @@ export function generateStatsByAuthor(parsedData: ParsedCSV): string {
     const avgTimeRaw = row.page_avg_time ?? row['page_avg_time'] ?? 0;
     const avgTime = typeof avgTimeRaw === 'number' ? avgTimeRaw : (Number(avgTimeRaw) || 0);
     
-    article.page_views += views;
-    article.page_uniques += uniques;
-    article.page_views_quality += qualityViews;
+    // Each article has a single total page view number repeated across multiple rows
+    // (one row per section/referrer combination). Use MAX to get the single total value.
+    // Since all rows for the same article have the same view count, MAX = that value.
+    article.page_views = Math.max(article.page_views, views);
+    article.page_uniques = Math.max(article.page_uniques, uniques);
+    article.page_views_quality = Math.max(article.page_views_quality, qualityViews);
+    
     if (row.section || row.Section) article.sections.add(row.section || row.Section);
     if (row.referrer || row.Referrer) article.referrers.add(row.referrer || row.Referrer);
     if (avgTime > article.page_avg_time) article.page_avg_time = avgTime;

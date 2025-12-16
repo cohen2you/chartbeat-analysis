@@ -5,7 +5,8 @@ import CSVInput from '@/components/CSVInput';
 import AnalysisResults from '@/components/AnalysisResults';
 import FullAnalysisModal from '@/components/FullAnalysisModal';
 import ArticlePerformanceAnalyzer from '@/components/ArticlePerformanceAnalyzer';
-import { Sparkles } from 'lucide-react';
+import TrafficAnalysisResults from '@/components/TrafficAnalysisResults';
+import { Sparkles, TrendingUp } from 'lucide-react';
 
 interface WriterRanking {
   rank: number;
@@ -90,6 +91,8 @@ export default function Home() {
   const [isLoadingPeriodComparison, setIsLoadingPeriodComparison] = useState(false);
   const [isLoadingMetricsComparison, setIsLoadingMetricsComparison] = useState(false);
   const [isLoadingMeetingSummary, setIsLoadingMeetingSummary] = useState(false);
+  const [isLoadingTrafficAnalysis, setIsLoadingTrafficAnalysis] = useState(false);
+  const [trafficAnalysis, setTrafficAnalysis] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<'team' | 'single-writer' | null>(null);
@@ -463,6 +466,53 @@ export default function Home() {
     }
   };
 
+  const handleGenerateTrafficAnalysis = async () => {
+    if (csvData.length === 0 || csvData.every(d => d.trim() === '')) {
+      setError('Please provide CSV data to analyze.');
+      return;
+    }
+
+    setIsLoadingTrafficAnalysis(true);
+    setError(null);
+
+    try {
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
+      const response = await fetch('/api/analyze-traffic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          csvData,
+          fileNames,
+          provider: aiProvider,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to analyze traffic');
+      }
+
+      setTrafficAnalysis(result);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setError('Request timed out. The analysis is taking longer than expected. Please try again.');
+      } else {
+        setError(err.message || 'An error occurred while analyzing traffic.');
+      }
+    } finally {
+      setIsLoadingTrafficAnalysis(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -587,6 +637,44 @@ export default function Home() {
             />
           </>
         )}
+
+        {/* Traffic Analysis Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-blue-500" />
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                Traffic Analysis
+              </h2>
+            </div>
+            <button
+              onClick={handleGenerateTrafficAnalysis}
+              disabled={isLoadingTrafficAnalysis || csvData.length === 0}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors shadow-sm"
+            >
+              {isLoadingTrafficAnalysis ? 'Analyzing...' : 'Analyze Traffic Patterns'}
+            </button>
+          </div>
+
+          {isLoadingTrafficAnalysis ? (
+            <div className="animate-pulse space-y-4">
+              <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          ) : trafficAnalysis ? (
+            <TrafficAnalysisResults
+              rankings={trafficAnalysis.rankings}
+              dailyStats={trafficAnalysis.dailyStats}
+              analysis={trafficAnalysis.analysis}
+              isLoading={isLoadingTrafficAnalysis}
+              onGenerate={handleGenerateTrafficAnalysis}
+            />
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Click "Analyze Traffic Patterns" to generate section rankings, daily traffic charts, and AI-powered traffic pattern analysis.
+            </p>
+          )}
+        </div>
       </div>
     </main>
   );
